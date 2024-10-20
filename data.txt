@@ -1,0 +1,1 @@
+query_id=AAEwG8QTAwAAADAbxBPJCkF6&user=%7B%22id%22%3A6774070064%2C%22first_name%22%3A%22Cahaya%22%2C%22last_name%22%3A%22Tania%22%2C%22language_code%22%3A%22en%22%2C%22allows_write_to_pm%22%3Atrue%7D&auth_date=1718731232&hash=15196bc2077ec197f3f59ce50099f34a1b55bd5c3b94bba04a4c41a16c0a6978
