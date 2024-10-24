@@ -5,6 +5,7 @@ import json
 import anyio
 import httpx
 import random
+import uuid
 import requests
 import asyncio
 import argparse
@@ -41,7 +42,7 @@ magenta = Fore.LIGHTMAGENTA_EX
 line = white + "~" * 50
 log_file = "http.log"
 proxy_file = "proxies.txt"
-data_file = "queries.txt"
+data_file = "data.txt"
 config_file = "config.json"
 
 
@@ -208,24 +209,23 @@ class BlumTod:
         self.headers["authorization"] = f"Bearer {token}"
         return True
 
-    async def get_data_payload(self):
-        url = 'https://raw.githubusercontent.com/zuydd/database/main/blum.json'
-        data = requests.get(url=url)
-        return data.json()
+    # async def get_data_payload(self):
+    #     url = 'https://raw.githubusercontent.com/zuydd/database/main/blum.json'
+    #     data = requests.get(url=url)
+    #     return data.json()
+
 
     async def create_payload(self, game_id, points, dogs):
-        data = await self.get_data_payload()
-        payload_server = data.get('payloadServer', [])
-        filtered_data = [item for item in payload_server if item['status'] == 1]
-        random_id = random.choice([item['id'] for item in filtered_data])
-        # random_id = random.choice(['bmyrrpbvnlaa8', "hpwsqafwqdqr9", "enmobnpmpxkw10"])
-        data = json.dumps({'game_id': game_id,
-                            'points': points,
-                            'dogs': dogs
-                            })
-        # print(f'2 create_payload - {data}')
-        # print(f' 000 - {random_id}')
-        resp = await self.http(f'https://{random_id}.vercel.app/api/blum', self.headers, data=data)
+        # data = await self.get_data_payload()
+        # payload_server = data.get('payloadServer', [])
+        # filtered_data = [item for item in payload_server if item['status'] == 1]
+        # random_id = random.choice([item['id'] for item in filtered_data])
+        payload_data = {'gameId': game_id,
+                'points': str(points),
+                "dogs": dogs}
+
+        PAYLOAD_SERVER_URL = "https://blum-toga-c3d9617e40ff.herokuapp.com/api/game"
+        resp = requests.post(PAYLOAD_SERVER_URL, json=payload_data)
 
         if resp is not None:
             data = resp.json()
@@ -359,7 +359,34 @@ class BlumTod:
             play_url = "https://game-domain.blum.codes/api/v2/game/play"
             claim_url = "https://game-domain.blum.codes/api/v2/game/claim"
             dogs_url = 'https://game-domain.blum.codes/api/v2/game/eligibility/dogs_drop'
-            game = True
+
+            #проверяем - доступен ли сервер декодирования
+            try:
+
+                PAYLOAD_SERVER_URL = "https://blum-toga-c3d9617e40ff.herokuapp.com/api/game"
+                random_uuid = str(uuid.uuid4())
+                points = random.randint(self.cfg.low, self.cfg.high)
+                payload_data = {'gameId': random_uuid,
+                                'points': str(points),
+                                "dogs": 0}
+                resp = requests.post(PAYLOAD_SERVER_URL, json=payload_data)
+                data = resp.json()
+
+                if "payload" in data:
+                    self.log(f"{green}Games available right now!")
+                    game = True
+
+                else:
+                    self.log(f"{red}Failed start games - {e}")
+                    self.log(f"{red}Games are not available right now!")
+                    game = False
+
+            except Exception as e:
+                self.log(f"{red}Failed start games - {e}")
+                self.log(f"{red}Games are not available right now!")
+                game = False
+
+
             while game:
                 res = await self.http(balance_url, self.headers)
 
@@ -395,7 +422,6 @@ class BlumTod:
 
 
                     while True:
-                        await countdown(random.randint(31, 40))
 
                         # количество очков
                         point = random.randint(self.cfg.low, self.cfg.high)
@@ -420,10 +446,10 @@ class BlumTod:
                             payload = await self.create_payload(game_id=game_id, points=point,
                                                              dogs=0)
 
-                        # print(f'333 -  {payload}')
+                        await countdown(random.randint(31, 40))
+
                         res = await self.http(claim_url, self.headers, payload)
 
-                        # print(f'123 - {res.text}')
                         if "OK" in res.text:
                             self.log(
                                 f"{green}success earn {white}{point}{green} from game !"
@@ -451,7 +477,7 @@ class BlumTod:
         claim_task_url = f"https://earn-domain.blum.codes/api/v1/tasks/{task_id}/claim"
         while True:
             if task_status == "FINISHED":
-                self.log(f"{yellow}already complete task id {white}{task_id} !")
+                self.log(f"{yellow}already complete task id {white}{task_title} !")
                 return
             if task_status == "READY_FOR_CLAIM" or task_status == "STARTED":
                 _res = await self.http(claim_task_url, self.headers, "")
@@ -460,23 +486,29 @@ class BlumTod:
                     return
                 _status = _res.json().get("status")
                 if _status == "FINISHED":
-                    self.log(f"{green}success complete task id {white}{task_id} !")
+                    self.log(f"{green}success complete task id {white}{task_title} !")
                     return
             if task_status == "NOT_STARTED" and task_type == "PROGRESS_TARGET":
                 return
             if task_status == "NOT_STARTED":
                 _res = await self.http(start_task_url, self.headers, "")
                 await countdown(3)
-                message = _res.json().get("message")
-                if message:
+                try:
+                    message = _res.json().get("message")
+                    if message:
+                        return
+                    task_status = _res.json().get("status")
+                    continue
+                except Exception as e:
+                    self.log(e)
                     return
-                task_status = _res.json().get("status")
-                continue
             if validation_type == "KEYWORD" or task_status == "READY_FOR_VERIFY":
+                await countdown(3)
                 verify_url = (
                     f"https://earn-domain.blum.codes/api/v1/tasks/{task_id}/validate"
                 )
-                answer_url = "https://akasakaid.github.io/blum/answer.json"
+                # answer_url = "https://akasakaid.github.io/blum/answer.json"
+                answer_url = "https://raw.githubusercontent.com/boytegar/BlumBOT/d55dcc033e508ee8dc10218f72f7ac369de1039f/verif.json"
                 res_ = await self.http(answer_url, {"User-Agent": "Marin Kitagawa"})
                 answers = res_.json()
                 answer = answers.get(task_id)
@@ -486,12 +518,19 @@ class BlumTod:
                     return
                 data = {"keyword": answer}
                 res = await self.http(verify_url, self.headers, json.dumps(data))
-                message = res.json().get("message")
-                if message:
+                if res:
+                    message = res.json().get("message")
+                    if message:
+                        self.log(message)
+                        break
+                        return
+                    task_status = res.json().get("status")
+                    continue
+                else:
                     break
-                    return
-                task_status = res.json().get("status")
-                continue
+            else:
+                break
+
 
 
 async def countdown(t):
@@ -517,7 +556,7 @@ async def get_data(data_file, proxy_file):
 
 async def main():
     init()
-    banner = f"""{Fore.YELLOW}                                                                              
+    banner = f"""{Fore.YELLOW}
   $$\   $$\  Original script                                      
   $$ |  $$ | https://github.com/akasakaid/blumtod
   \$$\ $$  | $$$$$$$\  $$$$$$\   $$$$$$\  $$$$$$$$\ $$\   $$\ 
@@ -528,7 +567,7 @@ async def main():
   \__|  \__|\_______/ \__|       \_______|\________| \____$$ |
              modified by Playing the Game by me.    $$\   $$ |
                                                     \$$$$$$  |
-                                                     \______/                                                                                                                                                                                                                   
+                                                     \______/        
         {Style.RESET_ALL}"""
     arg = argparse.ArgumentParser()
     arg.add_argument(
@@ -605,6 +644,8 @@ async def main():
     {green}6{white}.{green}) {white}start bot (multiprocessing)
     {green}7{white}.{green}) {white}start bot (sync mode)
         """
+        #{green}3{white}.{green}) {white}set on/off auto play game ({(green + "active" if config.auto_game else red + "non-active")})
+        #{green}3{white}.{green}) {white}set on/off auto play game ({(red + "games are not available right now!")})
         opt = None
         if args.action:
             opt = args.action
