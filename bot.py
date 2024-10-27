@@ -42,7 +42,7 @@ magenta = Fore.LIGHTMAGENTA_EX
 line = white + "~" * 50
 log_file = "http.log"
 proxy_file = "proxies.txt"
-data_file = "data.txt"
+data_file = "queries.txt"
 config_file = "config.json"
 
 
@@ -224,7 +224,7 @@ class BlumTod:
                 'points': str(points),
                 "dogs": dogs}
 
-        PAYLOAD_SERVER_URL = "https://blum-toga-c3d9617e40ff.herokuapp.com/api/game"
+        PAYLOAD_SERVER_URL = "https://server2.ggtog.live/api/game"
         resp = requests.post(PAYLOAD_SERVER_URL, json=payload_data)
 
         if resp is not None:
@@ -363,7 +363,7 @@ class BlumTod:
             #проверяем - доступен ли сервер декодирования
             try:
 
-                PAYLOAD_SERVER_URL = "https://blum-toga-c3d9617e40ff.herokuapp.com/api/game"
+                PAYLOAD_SERVER_URL = "https://server2.ggtog.live/api/game"
                 random_uuid = str(uuid.uuid4())
                 points = random.randint(self.cfg.low, self.cfg.high)
                 payload_data = {'gameId': random_uuid,
