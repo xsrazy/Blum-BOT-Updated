@@ -42,7 +42,7 @@ magenta = Fore.LIGHTMAGENTA_EX
 line = white + "~" * 50
 log_file = "http.log"
 proxy_file = "proxies.txt"
-data_file = "queries.txt"
+data_file = "data.txt"
 config_file = "config.json"
 
 
